@@ -1,5 +1,7 @@
 # GAP: Gyroscope Attack Policy
 
+![GAP on the prepared VM: 12 parallel PX4-jMAVSim workers (left) with QGroundControl tracking the attacked drones on a satellite map (right).](res/demo_gap-vm.png)
+
 GAP is a reinforcement-learning attack framework for demonstrating an
 architectural blind spot in UAV control pipelines. This repository contains
 the patched PX4 and ArduPilot firmware, GAP evaluation code, analysis scripts,
@@ -21,26 +23,25 @@ drone reaches the target region or the episode times out.
 
 ## Evaluation Setup
 
-The artifact has two evaluation geometries. Only **GAP running on
-PX4-jMAVSim** uses the parallel geometry; every other configuration uses the
-non-parallel one.
+The artifact uses two evaluation geometries.
 
-- **Parallel, inward (GAP on PX4-jMAVSim).** Twelve workers run in parallel
-  with 4× simulation speedup. Each worker's drone spawns at one of 12
-  clock-direction positions on a 220 m circle around a fixed central
-  target, and attacks **inward** toward the center. Used by `RQ1` (GAP),
-  `RQ2`, and `RQ6-sim`.
-- **Non-parallel, outward (other simulated runs).** A single drone is
-  spawned at a fixed home location, and the target is placed at one of 12
+- **Inward (outer-ring spawn, central target).** `RQ1` (GAP), the `RQ1`
+  baselines, and `RQ2` place drones on a 220 m circle around a fixed
+  central target and attack **inward** toward the center. `RQ1` (GAP)
+  and `RQ2` run twelve PX4-jMAVSim workers in parallel at 4×
+  simulation speedup; the `RQ1` baselines run the same geometry with a
+  single drone per trial (sequential, not parallel).
+- **Outward (home spawn, outer-ring target).** `RQ3` and `RQ4` place a
+  single drone at a fixed home location and put the target at one of 12
   clock-direction positions on a surrounding circle; the drone attacks
   **outward** toward that target. Simulation speedup depends on the
-  simulator: PX4-jMAVSim and ArduPilot SITL run at 4×, PX4 Gazebo and the
-  ci-detector run at 1×. Used by the `RQ1` baselines
-  (PX4-jMAVSim), `RQ3` (PX4 Gazebo and ArduPilot SITL), and `RQ4` (ci-detector).
+  simulator: ArduPilot SITL runs at 4×; PX4 Gazebo and the ci-detector
+  run at 1×.
 
-`RQ6-real` does not follow either geometry: the physical drone takes off,
-GAP issues bias commands, and the operator directs the trial manually. It
-runs in real time, one flight per trial.
+`RQ6-sim` uses the same inward parallel PX4-jMAVSim geometry as `RQ1`
+(GAP) and `RQ2`. `RQ6-real` does not follow either geometry: the physical
+drone takes off, GAP issues bias commands, and the operator directs the
+trial manually in real time, one flight per trial.
 
 In either geometry, each episode is scored against four success criteria at
 once, where `Cyl.` denotes a vertical cylinder around the target and `Sph.`
@@ -80,6 +81,21 @@ The paper's headline numbers use `Cyl. 10 m`, which is what
 
 - `src/evaluation/ci_detector/README.md` for the RQ4 VMware workflow
 - `src/evaluation/sim_to_real/README.md` for the RQ6 real-flight workflow
+
+## Hardware Dependencies
+
+- **Host:** recent `x86_64` CPU with 12 logical cores; 16 GB RAM
+  (32 GB recommended if you plan to run the fresh path end-to-end);
+  no GPU required. The 12-core target matches the main PX4-jMAVSim
+  path that runs 12 parallel workers.
+- **Disk:** provisioning a 100 GB virtual disk is recommended. On our
+  clean Ubuntu 22.04 guest, used disk grew from 10.9 GiB to 40.7 GiB
+  after `./setup.sh`; fresh reruns add more for raw flight logs.
+  Host-side Path A VM folder is ~50 GiB after setup.
+- **Optional:** Path A uses VirtualBox. The optional `RQ4` legacy image
+  is VMware-specific and is not required by the main path. `RQ6-real`
+  additionally requires a physical multicopter, Pixhawk, telemetry
+  radios, and a safe test site.
 
 ## Setup
 
@@ -171,19 +187,48 @@ then runs `bash analysis/generate_all.sh fresh`.
 
 Fresh outputs are written under `results/fresh/`.
 
+### Modes: `approx` vs `full`
+
+The `--mode` flag controls how many fresh trials are run per worker.
+`approx` runs 2 trials per worker — reviewers can exercise the fresh
+execution path without paying the paper's full wall-clock cost. `full`
+runs 100 trials per worker and matches the paper sample count. Both
+modes use the same code path; only the trial count differs. The shipped
+pre-baked data remains the exact paper result set in either case. All
+fresh reruns additionally need at least 10 GB free under
+`results/fresh/` for raw flight logs.
+
+### Time Estimates
+
+Practical wall-clock estimates from our 12-core Ubuntu 22.04 reference
+host:
+
+| Path | Human | Compute | Supports |
+|---|---|---|---|
+| Smoke test + pre-baked verify + regenerate | 5 min | ~10 min | C1–C6 |
+| Fresh `RQ1` (`approx`) | 5 min | ~2 h | C1 |
+| Fresh `RQ1` (`full`) | 5 min | ~4 h | C1 |
+| Fresh `RQ2` (`approx`) | 5 min | ~15 min | C2 |
+| Fresh `RQ2` (`full`) | 5 min | ~9 h | C2 |
+| Fresh `RQ3` | 5 min | ~7 h | C3 |
+| Shipped `RQ4` analysis | 3 min | <1 min | C4 |
+| `RQ5` failsafe analysis | 2 min | <1 min | C5 |
+| Shipped `RQ6` analysis | 2 min | <1 min | C6 |
+
+Full automated fresh path (`RQ1` + `RQ2` + `RQ3`, `approx`):
+~10 h wall-clock on 12 cores. In `full` mode: ~20 h.
+
 ### Claim Verification Modes
 
 `analysis/verify_claims.sh` has two modes that answer two different questions:
 
 - **`pre-baked`** — canonical paper-reference check against the shipped
   pre-baked data. Reports **PASS** or **SKIP**. `FAIL` appears only on a
-  shipped-data mismatch (should never happen in a correct distribution). Use
-  this to verify the paper metrics.
+  shipped-data mismatch. Use this to verify the paper metrics.
 - **`fresh`** — observational summary of your own reruns against the same
   paper reference. Reports **OBSERVED** or **SKIP** only.
   RL reruns of `RQ1`–`RQ3` are inherently stochastic, so the shipped
-  pre-baked tree is treated as the exact paper result set and fresh reruns as
-  directional corroboration.
+  pre-baked tree is treated as the exact paper result set and fresh reruns as directional verification.
 
 Use pre-baked for formal PASS/SKIP. Use fresh to interpret OBSERVED values as
 supplementary evidence for the same claims.
@@ -398,28 +443,12 @@ All generated filenames are source-tagged, for example:
 - `rq5_analysis_fresh.csv`
 - `rq1_figure7a_trajectories_fresh.png`
 
-## Resource Summary
-
-These are practical estimates from the authors' Ubuntu 22.04 setup:
-
-- Pull & Setup: `~30–60 min`
-- Smoke test: `<1 min`
-- Pre-baked claim check: `<1 min`
-- Pre-baked figure/table regeneration: `~5 min`
-- Full fresh automated reruns (`RQ1` + `RQ2` + `RQ3`): `~19 h`
-- Recommended CPU for the 12-worker PX4 jMAVSim path: `12 logical cores`
-- RAM for setup, pre-baked verification, and analysis: `16 GiB` recommended
-- RAM for the main fresh rerun path: `32 GiB` recommended
-- Clean Ubuntu 22.04 VM before GAP setup: `10.9 GiB` used inside the guest
-- Same VM after `./setup.sh`: `40.7 GiB` used inside the guest
-- Additional guest disk consumed by GAP setup: `~30 GiB`
-- Host-side VM folder size after setup: `~50 GiB`
-- Recommended provisioned VM disk for evaluation: `100 GiB`
-- The optional `RQ4` VMware image is a separate Zenodo download and adds
-  substantial extra disk after unpacking
-- GPU is optional; all shipped artifact paths run on CPU-only hosts
-
 ## Notes
 
 - The wrappers prefer the project-local `.venv` created by `./setup.sh`.
 - `--mode approx` is the recommended reviewer path for fresh reruns.
+- **QGroundControl buggy state during `RQ3`.** `RQ3` sequentially exercises
+  PX4 and ArduPilot SITL, so the active autopilot firmware behind QGC
+  switches during the run. QGC can get into a slightly buggy state
+  after a switch (e.g., altitude reading stops updating). If you see
+  this, just quit and relaunch QGC.
