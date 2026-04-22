@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "test_name": "gap_px4-gazebo_x500",
+    "timestamp": "20251107_000000",
+    "total_tests": 24,
+    "cylinder_20m": {
+      "successes": 22,
+      "success_rate": 0.9166666666666666,
+      "success_rate_percentage": 91.66666666666666
+    },
+    "sphere_20m": {
+      "successes": 17,
+      "success_rate": 0.7083333333333334,
+      "success_rate_percentage": 70.83333333333334
+    },
+    "cylinder_10m": {
+      "successes": 20,
+      "success_rate": 0.8333333333333334,
+      "success_rate_percentage": 83.33333333333334
+    },
+    "sphere_10m": {
+      "successes": 8,
+      "success_rate": 0.3333333333333333,
+      "success_rate_percentage": 33.33333333333333
+    }
+  },
+  "results": []
+}

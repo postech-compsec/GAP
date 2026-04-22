@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+.cache/
+
+# Build artifacts from submodules
+GAP-PX4-Autopilot/build/
+GAP-ardupilot/build/
+
+# Fresh experiment outputs
+results/fresh/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Model checkpoints
+src/gap/models/gap_model/
+src/gap/models/sim-to-real_model/
+
+# Pre-baked data
+results/pre-baked/flight-logs/px4/raw
+results/fresh/flight-logs
+zenodo-upload/
+
+# Analysis outputs
+analysis/csv
+analysis/figures
+
+# CI-detector VMware image
+src/evaluation/ci_detector/apmvm/

@@ -1,0 +1,15 @@
+[submodule "GAP-ardupilot"]
+	path = GAP-ardupilot
+	url = https://github.com/postech-compsec/GAP-ardupilot.git
+	branch = v4.7.0-dev-GAP
+	ignore = untracked
+[submodule "GAP-PX4-Autopilot"]
+	path = GAP-PX4-Autopilot
+	url = https://github.com/postech-compsec/GAP-PX4-Autopilot.git
+	branch = v1.15.4-GAP
+	ignore = untracked
+[submodule "GAP-mavlink"]
+	path = GAP-mavlink
+	url = https://github.com/postech-compsec/GAP-mavlink.git
+	branch = custom_message
+	ignore = untracked
